@@ -2,46 +2,62 @@
 #ifndef SKY_GLSL
 #define SKY_GLSL
 
-const vec3 SKY_TOP_SUNRISE = vec3(0.19, 0.55, 0.85);
-const vec3 SKY_BOTTOM_SUNRISE = vec3(0.81, 0.24, 0.03);
-const vec3 SKY_TOP_DAY = vec3(0.1, 0.49, 0.81);
-const vec3 SKY_BOTTOM_DAY = vec3(0.9, 0.9, 0.9);
-const vec3 SKY_TOP_SUNSET = vec3(0.1, 0.49, 0.81);
-const vec3 SKY_BOTTOM_SUNSET = vec3(0.72, 0.07, 0.003);
-const vec3 SKY_TOP_NIGHT = vec3(0., 0.11, 0.21);
-const vec3 SKY_BOTTOM_NIGHT = vec3(0., 0.05, 0.1);
+#include "math.glsl"
+
+const vec3 SKY_DAY = vec3(0.1, 0.49, 0.81);
+const vec3 SKY_NIGHT = vec3(0., 0., 0.02);
+
+const vec3 SUN_SUNRISE1 = vec3(1., 0.44, 0.23);
+const vec3 SUN_SUNRISE2 = vec3(0.95, 0.74, 0.45);
+const vec3 SUN_DAY = vec3(0.9, 0.9, 0.9);
+const vec3 SUN_SUNSET1 = vec3(0.95, 0.74, 0.45);
+const vec3 SUN_SUNSET2 = vec3(1., 0.44, 0.23);
+const vec3 SUN_NIGHT = vec3(0., 0.05, 0.1);
 
 vec3[2] getSkyColors() {
     float day = smoothstep(0.05, 0.1, sunAngle);
-    float sunset = smoothstep(0.3, 0.5, sunAngle);
+    float sunset1 = smoothstep(0.3, 0.4, sunAngle);
+    float sunset2 = smoothstep(0.4, 0.5, sunAngle);
     float night = smoothstep(0.5, 0.6, sunAngle);
-    float sunrise = smoothstep(0.9, 1., sunAngle);
+    float sunrise1 = smoothstep(0.9, 0.98, sunAngle);
+    float sunrise2 = smoothstep(0.98, 1., sunAngle);
 
-    vec3 topDay = mix(SKY_TOP_SUNRISE, SKY_TOP_DAY, day);
-    vec3 bottomDay = mix(SKY_BOTTOM_SUNRISE, SKY_BOTTOM_DAY, day);
+    float nightlight = smoothstep(0.5, 0.6, sunAngle);
+    float daylight = smoothstep(0.8, 1., sunAngle - 0.1);
 
-    vec3 topSunset = mix(topDay, SKY_TOP_SUNSET, sunset);
-    vec3 bottomSunset = mix(bottomDay, SKY_BOTTOM_SUNSET, sunset);
+    vec3 baseNight = mix(SKY_DAY, SKY_NIGHT, nightlight);
+    vec3 base = mix(baseNight, SKY_DAY, daylight);
 
-    vec3 topNight = mix(topSunset, SKY_TOP_NIGHT, night);
-    vec3 bottomNight = mix(bottomSunset, SKY_BOTTOM_NIGHT, night);
+    vec3 sunDay = mix(SUN_SUNRISE2, SUN_DAY, day);
+    vec3 sunSunset1 = mix(sunDay, SUN_SUNSET1, sunset1);
+    vec3 sunSunset2 = mix(sunSunset1, SUN_SUNSET2, sunset2);
+    vec3 sunNight = mix(sunSunset2, SUN_NIGHT, night);
+    vec3 sunSunrise1 = mix(sunNight, SUN_SUNRISE1, sunrise1);
+    vec3 sun = mix(sunSunrise1, SUN_SUNRISE2, sunrise2);
 
-    vec3 top = mix(topNight, SKY_TOP_SUNRISE, sunrise);
-    vec3 bottom = mix(bottomNight, SKY_BOTTOM_SUNRISE, sunrise);
-
-    return vec3[2](top, bottom);
+    return vec3[2](base, sun);
 }
 
 vec3 getSkyGradient(vec3 pos) {
     vec3 position = normalize(pos);
+    vec3 sunPos = normalize(sunPosition);
     vec3 up = normalize(gbufferModelView[1].xyz);
     vec3 horizon = normalize(up + position);
+    vec3 sunAtHorizon = normalize(vec3(sunPos.x, 0., sunPos.z));
 
-    float gradient = smoothstep(0.5, 1.0, distance(position, horizon));
+    float day = smoothstep(0.05, 0.1, sunAngle);
+    float sunset = smoothstep(0.3, 0.5, sunAngle);
+    float sunGradientSize = mix(mix(1., 1.5, day), 1.5, sunset);
+    float sunGradient = length(sunPos - position) * sunGradientSize;
+
+    float distSun = length(sunAtHorizon - position) * 0.2;
+    float distHorizon = smoothstep(0.5, 1.0, length(horizon - position));
+    float skyGradient = clamp(mix(1. - distHorizon, 1., distSun), 0., 1.);
+    float gradient = smin(skyGradient, sunGradient, 0.99);
 
     vec3[2] skyColors = getSkyColors();
 
-    vec3 color = mix(skyColors[0], skyColors[1], gradient);
+    vec3 color = mix(skyColors[1], skyColors[0], gradient);
 
     return color;
 }

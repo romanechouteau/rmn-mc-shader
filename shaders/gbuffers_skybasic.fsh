@@ -3,6 +3,7 @@
 uniform float viewWidth;
 uniform float viewHeight;
 uniform float sunAngle;
+uniform vec3 sunPosition;
 uniform mat4 gbufferModelView;
 uniform mat4 gbufferProjectionInverse;
 
