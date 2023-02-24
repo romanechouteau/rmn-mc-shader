@@ -14,7 +14,7 @@ const vec3 SUN_SUNSET1 = vec3(0.95, 0.74, 0.45);
 const vec3 SUN_SUNSET2 = vec3(1., 0.44, 0.23);
 const vec3 SUN_NIGHT = vec3(0., 0.05, 0.1);
 
-vec3[2] getSkyColors() {
+vec3[2] getSkyColors(float sunAngle) {
     float day = smoothstep(0.05, 0.1, sunAngle);
     float sunset1 = smoothstep(0.3, 0.4, sunAngle);
     float sunset2 = smoothstep(0.4, 0.5, sunAngle);
@@ -38,7 +38,7 @@ vec3[2] getSkyColors() {
     return vec3[2](base, sun);
 }
 
-vec3 getSkyGradient(vec3 pos) {
+vec3 getSkyGradient(vec3 pos, vec3 sunPosition, float sunAngle, mat4 gbufferModelView) {
     vec3 position = normalize(pos);
     vec3 sunPos = normalize(sunPosition);
     vec3 up = normalize(gbufferModelView[1].xyz);
@@ -55,7 +55,7 @@ vec3 getSkyGradient(vec3 pos) {
     float skyGradient = clamp(mix(1. - distHorizon, 1., distSun), 0., 1.);
     float gradient = smin(skyGradient, sunGradient, 0.99);
 
-    vec3[2] skyColors = getSkyColors();
+    vec3[2] skyColors = getSkyColors(sunAngle);
 
     vec3 color = mix(skyColors[1], skyColors[0], gradient);
 

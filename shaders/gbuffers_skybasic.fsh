@@ -14,7 +14,7 @@ void main() {
     vec4 viewPos = gbufferProjectionInverse * (screenPos * 2.0 - 1.0);
     viewPos /= viewPos.w;
 
-    vec3 color = getSkyGradient(viewPos.xyz);
+    vec3 color = getSkyGradient(viewPos.xyz, sunPosition, sunAngle, gbufferModelView);
 
     /* DRAWBUFFERS:0 */
     gl_FragData[0] = vec4(color, 1.0);

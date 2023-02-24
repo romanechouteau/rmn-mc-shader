@@ -6,6 +6,7 @@ varying vec2 TexCoords;
 
 // Direction of the sun (not normalized!)
 uniform vec3 sunPosition;
+uniform float sunAngle;
 
 // The color textures which we wrote to
 uniform sampler2D colortex0;
@@ -32,6 +33,8 @@ const float sunPathRotation = -40.0f;
 const int shadowMapResolution = 2048;
 const int noiseTextureResolution = 64;
 
+#include "sky.glsl"
+
 const float Ambient = 0.025f;
 
 float AdjustLightmapTorch(in float torch) {
@@ -56,9 +59,12 @@ vec2 AdjustLightmap(in vec2 Lightmap){
 vec3 GetLightmapColor(in vec2 Lightmap){
     // First adjust the lightmap
     Lightmap = AdjustLightmap(Lightmap);
-    // Color of the torch and sky. The sky color changes depending on time of day but I will ignore that for simplicity
+    // Color of the torch and sky.
     const vec3 TorchColor = vec3(1.0f, 0.25f, 0.08f);
-    const vec3 SkyColor = vec3(0.05f, 0.15f, 0.1f);
+
+    vec3[2] skyColors = getSkyColors(sunAngle);
+    vec3 SkyColor = mix(skyColors[0], skyColors[1], 0.f);
+
     // Multiply each part of the light map with it's color
     vec3 TorchLighting = Lightmap.x * TorchColor;
     vec3 SkyLighting = Lightmap.y * SkyColor;
@@ -122,9 +128,12 @@ void main(){
     vec2 Lightmap = texture2D(colortex2, TexCoords).rg;
     vec3 LightmapColor = GetLightmapColor(Lightmap);
     // Compute cos theta between the normal and sun directions
-    float NdotL = max(dot(Normal, normalize(sunPosition)), 0.0f);
+    float night = step(0.5f, sunAngle);
+    vec3 sunPos = mix(normalize(sunPosition), normalize(-sunPosition), night);
+    float NdotL = max(dot(Normal, sunPos), 0.0f);
+    float sunIntensity =  mix(1., 0.05, night);
     // Do the lighting calculations
-    vec3 Diffuse = Albedo * (LightmapColor + NdotL * GetShadow(Depth) + Ambient);
+    vec3 Diffuse = Albedo * (LightmapColor + NdotL * sunIntensity * GetShadow(Depth) + Ambient);
     /* DRAWBUFFERS:0 */
     // Finally write the diffuse color
     gl_FragData[0] = vec4(Diffuse, 1.0f);
